@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import java.io.IOException
 import java.lang.Exception
 import java.util.concurrent.CopyOnWriteArrayList
@@ -18,7 +19,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 //        main11()
 //        exceptionConcurrent()
-        fixBugException()
+//        fixBugException()
+        main14()
     }
 
     private fun main() = runBlocking {
@@ -331,4 +333,41 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    // flow example
+    // take
+    fun numbers(): Flow<Int> = flow {
+        try {
+            emit(1)
+            emit(2)
+            println("This line will not execute")
+            emit(3)
+        } catch (e: CancellationException) {
+            println("exception")
+        } finally {
+            println("close resource here")
+        }
+    }
+
+    fun main14() = runBlocking {
+        numbers()
+            .take(2) // take only the first two
+            .collect { value ->
+                println(value)
+            }
+    }
+
+    // transform
+    fun main15() = runBlocking {
+        (1..9).asFlow() // a flow of requests
+            .transform { value ->
+                if (value % 2 == 0) { // Emit only even values, but twice
+                    emit(value * value)
+                    emit(value * value * value)
+                } // Do nothing if odd
+            }
+            .collect { response -> println(response) }
+    }
+
+
 }
