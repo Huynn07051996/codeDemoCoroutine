@@ -20,7 +20,7 @@ class MainActivity : AppCompatActivity() {
 //        main11()
 //        exceptionConcurrent()
 //        fixBugException()
-        main14()
+        main17()
     }
 
     private fun main() = runBlocking {
@@ -32,11 +32,12 @@ class MainActivity : AppCompatActivity() {
         }
         delay(1300L) // delay a bit
         Log.e(TAG, "main: I'm tired of waiting!")
+        Log.e(TAG, "check isActive: ${job.isActive} - isCompleted: ${job.isCompleted} - isCancelled: ${job.isCancelled}")
         job.cancel() // cancels the job
+        Log.e(TAG, "check isActive: ${job.isActive} - isCompleted: ${job.isCompleted} - isCancelled: ${job.isCancelled}")
         job.join() // waits for job's completion
         Log.e(TAG, "main: Now I can quit.")
     }
-
 
     fun main2() = runBlocking {
         val time = measureTimeMillis {
@@ -104,20 +105,20 @@ class MainActivity : AppCompatActivity() {
     // Đồng thời có cấu trúc
     fun main4() = runBlocking {
         doWorld()
-        println("Done")
+        Log.e(TAG,"Done")
     }
 
     // Concurrently executes both sections
     suspend fun doWorld() = coroutineScope { // this: CoroutineScope
         launch {
             delay(2000L)
-            println("World 2")
+            Log.e(TAG,"World 2")
         }
         launch {
             delay(1000L)
-            println("World 1")
+            Log.e(TAG,"World 1")
         }
-        println("Hello")
+        Log.e(TAG,"Hello")
     }
 
     // Đồng thời có cấu trúc
@@ -137,7 +138,7 @@ class MainActivity : AppCompatActivity() {
             val job3 = launch {
                 delay(3000L)
                 Log.e(TAG, "World 3")
-            }
+            }.invokeOnCompletion {  }
         }
         Log.e(TAG, "Hello")
     }
@@ -340,20 +341,20 @@ class MainActivity : AppCompatActivity() {
         try {
             emit(1)
             emit(2)
-            println("This line will not execute")
+            Log.e(TAG,"This line will not execute")
             emit(3)
         } catch (e: CancellationException) {
-            println("exception")
+            Log.e(TAG,"exception")
         } finally {
-            println("close resource here")
+            Log.e(TAG,"close resource here")
         }
     }
 
     fun main14() = runBlocking {
         numbers()
-            .take(2) // take only the first two
+            .take(3) // take only the first two
             .collect { value ->
-                println(value)
+                Log.e(TAG,"collect: $value")
             }
     }
 
@@ -366,8 +367,38 @@ class MainActivity : AppCompatActivity() {
                     emit(value * value * value)
                 } // Do nothing if odd
             }
-            .collect { response -> println(response) }
+            .collect { response -> Log.e(TAG,"$response") }
     }
 
+    fun simple(): Flow<Int> = flow {
+        for (i in 1..3) {
+            delay(100) // pretend we are asynchronously waiting 100 ms
+            emit(i) // emit next value
+            Log.e(TAG,"emit: $i")
+        }
+    }
+
+    fun main16() = runBlocking<Unit> {
+        val time = measureTimeMillis {
+            simple()
+                .conflate()
+                .collectLatest{ value ->
+                delay(300) // pretend we are processing it for 300 ms
+                println(value)
+                Log.e(TAG,"collect: $value")
+            }
+        }
+        Log.e(TAG,"Collected in $time ms")
+    }
+
+    fun main17() = runBlocking<Unit> {
+        val nums = (1..3).asFlow().onEach { delay(300) } // numbers 1..3 every 300 ms
+        val strs = flowOf("one", "two", "three").onEach { delay(400) } // strings every 400 ms
+        val startTime = System.currentTimeMillis() // remember the start time
+        nums.combine(strs) { a, b -> "$a -> $b" } // compose a single string with "combine"
+            .collect { value -> // collect and print
+                Log.e(TAG,"$value at ${System.currentTimeMillis() - startTime} ms from start")
+            }
+    }
 
 }
